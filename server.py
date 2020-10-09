@@ -24,28 +24,29 @@ class Server:
     def __init__(self):
         self._chain = []
         self.difficulty = 2
+        self.proof = sha256(b"First Block").hexdigest()
 
-    def MostRecentBlock(self):
+    def MostRecentBlockHash(self):
         if(len(self._chain) > 0):
-            return self._chain[-1]
-        return None
+            return self._chain[-1].hash()
+        return sha256(b"First Block").hexdigest()
+
     def getLen(self):
         return len(self._chain)
     
     def isValid(self, block, blockHash):
-
         return (blockHash.startswith('0' *  self.difficulty) and blockHash == block.compute_hash())
 
     def add_block(self, block):
-        prevhash = self.MostRecentBlock().hash
+        prevhash = self.MostRecentBlockHash()
 
         if prevhash != block.prevhash:
             return False
         
-        if not isValid(block, proof):
+        if not self.isValid(block, self.proof):
             return False
 
-        block.hash = proof
+        block.hash = self.proof
         self._chain.append(block)
 
     def alreadyExist(self, user):
@@ -95,7 +96,7 @@ def register():
             'user': username,
             'pass': password
         }
-        block = Block(server.getLen(), data, time.time(), server.MostRecentBlock().hash, 0)
+        block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
 
         proof = server.proofOfWork(block)
 
