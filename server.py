@@ -1,11 +1,11 @@
-from flask import Flask, request
-from flask_httpauth import HTTPBasicAuth
+from flask import Flask, render_template, request, redirect, send_from_directory
+# from flask_httpauth import HTTPBasicAuth
 from hashlib import sha256
 import json
 import time
 import requests
 
-auth = HTTPBasicAuth()
+# auth = HTTPBasicAuth()
 
 class Block:
     def __init__(self, index, data, timestamp, prevhash, nonce = 0):
@@ -26,7 +26,9 @@ class Server:
         self.difficulty = 2
 
     def MostRecentBlock(self):
-        return self._chain[-1]
+        if(len(self._chain) > 0):
+            return self._chain[-1]
+        return None
     def getLen(self):
         return len(self._chain)
     
@@ -63,27 +65,43 @@ class Server:
         return computed_hash
 
 app = Flask(__name__)
+HOST = '0.0.0.0'
+PORT = 5000
 
 server = Server()
 
-@app.route('/auth', methods=['POST'])
+@app.route('/')
+def hello():
+	return render_template('home.html')
+
+@app.route('/login', methods=['POST'])
+def login():
+    if(request.method == 'POST'):
+        username = str(request.form['username'])
+        password = str(request.form['password'])
+        return render_template('loggedIn.html', msg = "Successfully Logged In")
+    return render_template('home.html')
+
+@app.route('/register', methods=['POST'])
 def register():
-    username = request.json.get('username')
-    password = request.json.get('password')
+    if(request.method == 'POST'):
+        username = str(request.form['username'])
+        password = str(request.form['password'])
 
-    if username is None or password is None:
-        abort(400)
-    if server.alreadyExist(username):
-        abort(400)
+        if server.alreadyExist(username):
+            return render_template('loggedIn.html', msg = "User Already Registered")
 
-    data = {
-        'user': username,
-        'pass': password
-    }
-    block = Block(server.getLen(), data, time.time(), server.MostRecentBlock().hash, 0)
+        data = {
+            'user': username,
+            'pass': password
+        }
+        block = Block(server.getLen(), data, time.time(), server.MostRecentBlock().hash, 0)
 
-    proof = server.proofOfWork(block)
+        proof = server.proofOfWork(block)
 
-    server.add_block(block)
-    return True
+        server.add_block(block)
+        return render_template('loggedIn.html', msg = "Successfully Registered !")
+    return render_template('home.html')
 
+if __name__ == "__main__":
+	app.run(host=HOST, port=PORT, debug=True)
