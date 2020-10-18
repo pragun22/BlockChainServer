@@ -55,6 +55,12 @@ class Server:
                 return True
         return False
 
+    def auth(self, user, password):
+    	for block in self._chain:
+    		if block.data.user == user and block.data.pass == password:
+    			return True
+    	return False
+
     def proofOfWork(self, block):
         block.nonce = 0
         
@@ -80,7 +86,13 @@ def login():
     if(request.method == 'POST'):
         username = str(request.form['username'])
         password = str(request.form['password'])
-        return render_template('loggedIn.html', msg = "Successfully Logged In")
+
+        password = sha256(password)
+
+       	if server.auth(username, password):
+       		return render_template('loggedIn.html')
+       	else:
+       		return render_template('home.html')
     return render_template('home.html')
 
 @app.route('/register', methods=['POST'])
@@ -91,10 +103,12 @@ def register():
 
         if server.alreadyExist(username):
             return render_template('loggedIn.html', msg = "User Already Registered")
-
+        password = sha256(password) # Hashing the password
         data = {
+            'type': 'info'
             'user': username,
-            'pass': password
+            'pass': password,
+            'items' : [],
         }
         block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
 
@@ -102,7 +116,43 @@ def register():
 
         server.add_block(block)
         return render_template('loggedIn.html', msg = "Successfully Registered !")
+
     return render_template('home.html')
+
+
+'''
+For implementing Transaction feature we need features as follows:-
+
+1. bet(buyer, seller, amount, item, txn_id/bet_id):
+    this should send seller a notification for a possible buyer for his item (may need an database for this)
+    We need to make bet such that a buyer shouldn't be able to make multiple bets even if he doesn't have sufficient
+    coins to buy all of them 
+2. accept(bet_id, buyer)
+    this should send the buyer that the seller has accepted the price and now items belong to him
+3. transact(buyer, seller, item, id)
+    this function confirms the txn and adds to the block
+
+Since we are using blockchain or openchain server we need to append items to item list and create a new block for them  
+
+'''
+
+@app.route('/buy/<buyer>/<seller>/<item>')
+def bet(buyer, seller, item):
+    txId = sha256(time.time() + seller + buyer)
+    data = {
+        'type' : 'bet',
+        'buyer': buyer,
+        'seller': seller,
+        'item': item,
+        'status' : 'onGoing'
+    }
+    block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
+    proof = server.proofOfWork(block)
+    server.add_block(block)
+    # Add a function for sending notification below
+    
+    return
+        
 
 if __name__ == "__main__":
 	app.run(host=HOST, port=PORT, debug=True)
