@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, redirect, send_from_directory, abort
+from flask import Flask, render_template, request, redirect, send_from_directory
 # from flask_httpauth import HTTPBasicAuth
 from hashlib import sha256
 import json
 import time
 import requests
-from flask_cors import CORS
+
 # auth = HTTPBasicAuth()
 
 class Block:
@@ -28,7 +28,7 @@ class Server:
 
     def MostRecentBlockHash(self):
         if(len(self._chain) > 0):
-            return self._chain[-1].hash()
+            return self._chain[-1].hash
         return sha256("First Block".encode()).hexdigest()
 
     def getLen(self):
@@ -76,7 +76,7 @@ class Server:
 app = Flask(__name__)
 HOST = '0.0.0.0'
 PORT = 5000
-CORS(app)
+
 server = Server()
 
 @app.route('/')
@@ -86,28 +86,25 @@ def hello():
 @app.route('/login', methods=['POST'])
 def login():
     if(request.method == 'POST'):
-        username = str(request.json.get('username'))
-        password = str(request.json.get('password'))
+        username = str(request.form['username'])
+        password = str(request.form['password'])
 
         password = sha256(password.encode()).hexdigest()
 
        	if server.auth(username, password):
-            return "Success"
-       		# return render_template('loggedIn.html')
+       		return render_template('loggedIn.html', msg = "Logged in")
        	else:
-       		# return render_template('home.html')
-            abort(400)
-    abort(400)
+       		return render_template('loggedIn.html', msg = "Invalid Info")
+    return render_template('home.html')
 
 @app.route('/register', methods=['POST'])
 def register():
     if(request.method == 'POST'):
-        username = str(request.json.get('username'))
-        password = str(request.json.get('password'))
+        username = str(request.form['username'])
+        password = str(request.form['password'])
 
         if server.alreadyExist(username):
-            # return render_template('loggedIn.html', msg = "User Already Registered")
-            return "Success"
+            return render_template('loggedIn.html', msg = "User Already Registered")
         password = sha256(password.encode()).hexdigest() # Hashing the password
         data = {
             'type': 'info',
@@ -120,11 +117,9 @@ def register():
         proof = server.proofOfWork(block)
 
         server.add_block(block)
-        return "Success"
-        # return render_template('loggedIn.html', msg = "Successfully Registered !")
+        return render_template('loggedIn.html', msg = "Successfully Registered !")
 
-    abort(400)
-    # return render_template('home.html')
+    return render_template('home.html')
 
 
 '''
