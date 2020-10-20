@@ -89,7 +89,7 @@ def login():
         username = str(request.json.get('username'))
         password = str(request.json.get('password'))
 
-        password = sha256(password.encode('utf-8')).hexdigest()
+        password = sha256(password.encode()).hexdigest()
 
        	if server.auth(username, password):
             return "Success"
@@ -108,7 +108,7 @@ def register():
         if server.alreadyExist(username):
             # return render_template('loggedIn.html', msg = "User Already Registered")
             return "Success"
-        password = sha256(password.encode('utf-8')).hexdigest() # Hashing the password
+        password = sha256(password.encode()).hexdigest() # Hashing the password
         data = {
             'type': 'info',
             'user': username,
