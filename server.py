@@ -34,28 +34,30 @@ class Server:
     def getLen(self):
         return len(self._chain)
     
-    def isValid(self, block, blockHash):
-        return (blockHash.startswith('0' *  self.difficulty) and blockHash == block.compute_hash())
+    # def isValid(self, block, blockHash):
+    #     return (blockHash.startswith('0' *  self.difficulty) and blockHash == block.compute_hash())
 
     def add_block(self, block):
         prevhash = self.MostRecentBlockHash()
         x = sha256("First Block".encode()).hexdigest()
-        print()
+        # print()
         if prevhash != block.prevhash:
             return False
         
-        if x != prevhash and not self.isValid(block, self.proof):
-            return False
+        # if x != prevhash and not self.isValid(block, self.proof):
+        #     return False
 
         block.hash = self.proof
         self._chain.append(block)
 
     def alreadyExist(self, user):
-        print("chain length", len(self._chain))
-        for block in self._chain:
+        # print("chain length", len(self._chain))
+        for block in self._chain[::-1]:
             if block.data['user'] == user:
-                return True
-        return False
+                return True, block.data
+        return False, {}
+    
+    # def 
 
     def auth(self, user, password):
     	for block in self._chain:
@@ -100,17 +102,46 @@ def login():
 @app.route('/register', methods=['POST'])
 def register():
     if(request.method == 'POST'):
+        email = str(request.form['email'])
         username = str(request.form['username'])
         password = str(request.form['password'])
 
-        if server.alreadyExist(username):
+        if server.alreadyExist(username)[0]:
             return render_template('loggedIn.html', msg = "User Already Registered")
         password = sha256(password.encode()).hexdigest() # Hashing the password
         data = {
-            'type': 'info',
-            'user': username,
-            'password': password,
-            'items' : [],
+            "type" : "info",
+            "email": email,
+            "username": username,
+            "password" : password,
+            "attributes" : {
+                "level": "2",
+                "next_task": "bjcsdr4543r4bhvhv4m2",
+                "xp_points": "420",
+                "coins": "0",
+                "cash": "1"
+            },
+            "inventory": {
+                "number_of_items": "3",
+                "items": [
+                    {
+                        "name": "abcd",
+                        "quantity": "1",
+                        "type": "coins",
+                        "auction": "",
+                        "price": "123",
+                        "isBiding": "true"
+                    },
+                    {
+                        "name": "sfd",
+                        "quantity": "2",
+                        "type": "scroll",
+                        "auction": "",
+                        "price": "123",
+                        "isBiding": "true"
+                    }
+                ]
+            }
         }
         block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
 
@@ -120,6 +151,72 @@ def register():
         return render_template('loggedIn.html', msg = "Successfully Registered !")
 
     return render_template('home.html')
+
+@app.route('/userInfo', methods=['POST'])
+def getPlayerInfo():
+    content = request.get_json() # might be wrong
+    # content = {
+    #    username : "",
+    # }
+    return server.alreadyExist(content['username'])[1]
+
+@app.route('/debugFunc', methods=['POST'])
+def debugFunc():
+    server.print_chain()
+    data = {
+        'username' : 'a',
+        "attributes" : {
+            "level": "3",
+            "next_task": "bjcsdr4543r4bhvhv4m2",
+            "xp_points": "7000",
+            "coins": "10",
+            "cash": "10"
+        },
+        'items' : [
+            {
+                "name": "xyz",
+                "quantity": "1",
+                "type": "coins",
+                "auction": "",
+                "price": "123",
+                "isBiding": "true"
+            },
+        ],
+        'operation' : 'add',
+    }
+    update_user(data)
+
+@app.route('/update', methods=['POST'])
+def update_user(content):
+    # getting json object from frontend
+    # content = request.get_json() # might be wrong
+    # content = {
+    #    username : "",
+    #    items : [item1, item2],
+    #    attributes: {
+    #    }
+    #    operation : add/delete,
+    # }
+    user_data = server.alreadyExist(content['username'])[1]
+    user_data['attributes'] = content['attributes']
+    if content['operation'] == "add" :
+        for item in content['items']:
+            user_data['inventory']['items'].append(item)
+        user_data['inventory']['number_of_items'] = str(int(user_data['inventory']['number_of_items']) + len(content['items']))
+    elif  content['operation'] == "delete" :
+        lst = []
+        for item in user_data['inventory']['items']:
+            if item not in content['items']:
+                lst.append(item)
+        user_data['inventory']['items'] = lst
+        user_data['inventory']['number_of_items'] = str(len(lst))
+    else :
+        return
+
+    block = Block(server.getLen(), user_data, time.time(), server.MostRecentBlockHash(), 0)
+    server.add_block(block)
+
+
 
 
 '''
