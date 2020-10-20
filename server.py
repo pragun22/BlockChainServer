@@ -4,7 +4,7 @@ from hashlib import sha256
 import json
 import time
 import requests
-
+from copy import deepcopy
 # auth = HTTPBasicAuth()
 
 class Block:
@@ -53,15 +53,18 @@ class Server:
     def alreadyExist(self, user):
         # print("chain length", len(self._chain))
         for block in self._chain[::-1]:
-            if block.data['user'] == user:
+            if block.data['username'] == user:
                 return True, block.data
         return False, {}
     
-    # def 
+    def print_chain(self):
+        for block in self._chain:
+            print(block.data)
+            print()
 
     def auth(self, user, password):
     	for block in self._chain:
-    		if block.data['user'] == user and block.data['password'] == password:
+    		if block.data['username'] == user and block.data['password'] == password:
     			return True
     	return False
 
@@ -102,7 +105,8 @@ def login():
 @app.route('/register', methods=['POST'])
 def register():
     if(request.method == 'POST'):
-        email = str(request.form['email'])
+        email = 'a@c'
+        # email = str(request.form['email'])
         username = str(request.form['username'])
         password = str(request.form['password'])
 
@@ -162,6 +166,40 @@ def getPlayerInfo():
 
 @app.route('/debugFunc', methods=['POST'])
 def debugFunc():
+    print("before updating")
+    server.print_chain()
+    data = {
+        'username' : 'a',
+        "attributes" : {
+            "level": "3",
+            "next_task": "bjcsdr4543r4bhvhv4m2",
+            "xp_points": "7000",
+            "coins": "10",
+            "cash": "10"
+        },
+        'items' : [
+            {
+                "name": "abcd",
+                "quantity": "4",
+                "type": "coins",
+                "auction": "",
+                "price": "123",
+                "isBiding": "true"
+            },
+            {
+                "name": "xyz",
+                "quantity": "2",
+                "type": "coins",
+                "auction": "",
+                "price": "123",
+                "isBiding": "true"
+            },
+        ],
+        'operation' : 'add',
+    }
+
+    update_user(data)
+    print("\n\nafter updating 1")
     server.print_chain()
     data = {
         'username' : 'a',
@@ -182,9 +220,15 @@ def debugFunc():
                 "isBiding": "true"
             },
         ],
-        'operation' : 'add',
+        'operation' : 'delete',
     }
     update_user(data)
+    print("\n\nafter updating 2 ")
+    server.print_chain()
+    update_user(data)
+    print("\n\nafter updating 3")
+    server.print_chain()
+    return render_template("loggedIn.html", msg = {"phoddaaa"})
 
 @app.route('/update', methods=['POST'])
 def update_user(content):
@@ -197,17 +241,35 @@ def update_user(content):
     #    }
     #    operation : add/delete,
     # }
-    user_data = server.alreadyExist(content['username'])[1]
+    user_data = deepcopy(server.alreadyExist(content['username'])[1])
     user_data['attributes'] = content['attributes']
     if content['operation'] == "add" :
         for item in content['items']:
-            user_data['inventory']['items'].append(item)
-        user_data['inventory']['number_of_items'] = str(int(user_data['inventory']['number_of_items']) + len(content['items']))
+            fl = 1
+            for exist_item in user_data['inventory']['items']:
+                if item['name'] == exist_item['name']:
+                    exist_item['quantity'] = str(int(exist_item['quantity']) + int(item['quantity']))
+                    fl = 0
+                    break
+            if fl == 1:
+                user_data['inventory']['items'].append(item)
+        
+        user_data['inventory']['number_of_items'] = str(len(user_data['inventory']['items']))
+    
     elif  content['operation'] == "delete" :
         lst = []
-        for item in user_data['inventory']['items']:
-            if item not in content['items']:
-                lst.append(item)
+        for exist_item in user_data['inventory']['items']:
+            fl = 1
+            for item in content['items']:
+                if item['name'] == exist_item['name']:
+                    exist_item['quantity'] = str(int(exist_item['quantity']) - int(item['quantity']))
+                    if int(exist_item['quantity']) != 0 :
+                        lst.append(exist_item)
+                    fl = 0
+                    break
+            if fl == 1:
+                lst.append(exist_item)
+
         user_data['inventory']['items'] = lst
         user_data['inventory']['number_of_items'] = str(len(lst))
     else :
