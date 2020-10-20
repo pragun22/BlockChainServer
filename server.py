@@ -24,12 +24,12 @@ class Server:
     def __init__(self):
         self._chain = []
         self.difficulty = 2
-        self.proof = sha256(b"First Block").hexdigest()
+        self.proof = sha256("First Block".encode()).hexdigest()
 
     def MostRecentBlockHash(self):
         if(len(self._chain) > 0):
             return self._chain[-1].hash()
-        return sha256(b"First Block").hexdigest()
+        return sha256("First Block".encode()).hexdigest()
 
     def getLen(self):
         return len(self._chain)
@@ -39,25 +39,27 @@ class Server:
 
     def add_block(self, block):
         prevhash = self.MostRecentBlockHash()
-
+        x = sha256("First Block".encode()).hexdigest()
+        print()
         if prevhash != block.prevhash:
             return False
         
-        if not self.isValid(block, self.proof):
+        if x != prevhash and not self.isValid(block, self.proof):
             return False
 
         block.hash = self.proof
         self._chain.append(block)
 
     def alreadyExist(self, user):
+        print("chain length", len(self._chain))
         for block in self._chain:
-            if block.data.user == user:
+            if block.data['user'] == user:
                 return True
         return False
 
     def auth(self, user, password):
     	for block in self._chain:
-    		if block.data.user == user and block.data.pass == password:
+    		if block.data['user'] == user and block.data['password'] == password:
     			return True
     	return False
 
@@ -87,12 +89,12 @@ def login():
         username = str(request.form['username'])
         password = str(request.form['password'])
 
-        password = sha256(password)
+        password = sha256(password.encode()).hexdigest()
 
        	if server.auth(username, password):
-       		return render_template('loggedIn.html')
+       		return render_template('loggedIn.html', msg = "Logged in")
        	else:
-       		return render_template('home.html')
+       		return render_template('loggedIn.html', msg = "Invalid Info")
     return render_template('home.html')
 
 @app.route('/register', methods=['POST'])
@@ -103,11 +105,11 @@ def register():
 
         if server.alreadyExist(username):
             return render_template('loggedIn.html', msg = "User Already Registered")
-        password = sha256(password) # Hashing the password
+        password = sha256(password.encode()).hexdigest() # Hashing the password
         data = {
-            'type': 'info'
+            'type': 'info',
             'user': username,
-            'pass': password,
+            'password': password,
             'items' : [],
         }
         block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
