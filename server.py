@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, send_from_directory
+from flask import Flask, render_template, request, redirect, send_from_directory, abort
 # from flask_httpauth import HTTPBasicAuth
 from hashlib import sha256
 import json
@@ -6,6 +6,7 @@ import time
 import requests
 from copy import deepcopy
 # auth = HTTPBasicAuth()
+from flask_cors import CORS
 
 class Block:
     def __init__(self, index, data, timestamp, prevhash, nonce = 0):
@@ -82,6 +83,7 @@ app = Flask(__name__)
 HOST = '0.0.0.0'
 PORT = 5000
 
+CORS(app)
 server = Server()
 
 @app.route('/')
@@ -91,27 +93,25 @@ def hello():
 @app.route('/login', methods=['POST'])
 def login():
     if(request.method == 'POST'):
-        username = str(request.form['username'])
-        password = str(request.form['password'])
+        username = str(request.json.get('username'))
+        password = str(request.json.get('password'))
 
         password = sha256(password.encode()).hexdigest()
 
-       	if server.auth(username, password):
-       		return render_template('loggedIn.html', msg = "Logged in")
-       	else:
-       		return render_template('loggedIn.html', msg = "Invalid Info")
-    return render_template('home.html')
+       	if server.auth(username, password): return json.dumps({'user': username, 'token': 999})
+       	else: abort(400)
+    return abort(400)
 
 @app.route('/register', methods=['POST'])
 def register():
+    print("hello")
     if(request.method == 'POST'):
         email = 'a@c'
         # email = str(request.form['email'])
-        username = str(request.form['username'])
-        password = str(request.form['password'])
-
+        username = str(request.json.get('username'))
+        password = str(request.json.get('password'))
         if server.alreadyExist(username)[0]:
-            return render_template('loggedIn.html', msg = "User Already Registered")
+            abort(400)
         password = sha256(password.encode()).hexdigest() # Hashing the password
         data = {
             "type" : "info",
@@ -152,9 +152,9 @@ def register():
         proof = server.proofOfWork(block)
 
         server.add_block(block)
-        return render_template('loggedIn.html', msg = "Successfully Registered !")
+        return json.dumps({'user': username, 'token': 999})
 
-    return render_template('home.html')
+    abort(400)
 
 @app.route('/userInfo', methods=['POST'])
 def getPlayerInfo():
@@ -162,7 +162,8 @@ def getPlayerInfo():
     # content = {
     #    username : "",
     # }
-    return server.alreadyExist(content['username'])[1]
+    print(content['username'].strip('"'))
+    return json.dumps(server.alreadyExist(content['username'].strip('"'))[1])
 
 @app.route('/debugFunc', methods=['POST'])
 def debugFunc():
