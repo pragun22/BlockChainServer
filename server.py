@@ -79,12 +79,97 @@ class Server:
 
         return computed_hash
 
+
+def insertShop():
+    print("insert")
+    email = "shop"
+    password = "shop"
+    username = "shop"
+    data = {
+        "type" : "shop",
+        "email": email,
+        "username": username,
+        "password" : password,
+        "attributes" : {
+        },
+        "shop": {
+            "number_of_items": "3",
+            "items": [
+                {
+                    "name": "abcd",
+                    "quantity": "1",
+                    "type": "coins",
+                    "sell_price": 123
+                },
+                {
+                    "name": "sfd",
+                    "quantity": "2",
+                    "type": "scroll",
+                    "price": 123
+                }
+            ]
+        },
+        "inventory": {
+        }
+    }
+    block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
+
+    proof = server.proofOfWork(block)
+
+    server.add_block(block)
+
+
+def insertAuction():
+    print("insert")
+    email = "auction"
+    password = "auction"
+    username = "auction"
+    data = {
+        "type" : "auction",
+        "email": email,
+        "username": username,
+        "password" : password,
+        "attributes" : {
+        },
+        "auction" : {
+			"number_of_items": "4",
+			"items": [
+				{
+					"name": "dffd",
+					"owner": "bob",
+					"base_price": 346,
+					"start_time": 1322353565,
+					"end_time": 423488543544,
+					"type": "scroll",
+					"auction": "",
+					"price": "123",
+					"biding_flag": True,
+					"biding": [
+						{
+							"username" : "bhutani",
+							"biding_amount" : 456
+						}
+					]
+				}
+			]
+		},
+        "inventory": {
+        }
+    }
+    block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
+
+    proof = server.proofOfWork(block)
+
+    server.add_block(block)
+
 app = Flask(__name__)
 HOST = '0.0.0.0'
 PORT = 5000
 
 CORS(app)
 server = Server()
+insertShop()
+insertAuction()
 
 @app.route('/')
 def hello():
@@ -159,9 +244,13 @@ def register():
 @app.route('/userInfo', methods=['POST'])
 def getPlayerInfo():
     content = request.get_json() # might be wrong
-    # content = {
-    #    username : "",
-    # }
+    print(content['username'].strip('"'))
+    return json.dumps(server.alreadyExist("shop")[1])
+
+
+@app.route('/marketInfo', methods=['POST'])
+def getMarketInfo():
+    content = request.get_json() # might be wrong
     print(content['username'].strip('"'))
     return json.dumps(server.alreadyExist(content['username'].strip('"'))[1])
 
@@ -297,24 +386,24 @@ For implementing Transaction feature we need features as follows:-
 Since we are using blockchain or openchain server we need to append items to item list and create a new block for them  
 
 '''
-
-@app.route('/buy/<buyer>/<seller>/<item>')
-def bet(buyer, seller, item):
-    txId = sha256(time.time() + seller + buyer)
-    data = {
-        'type' : 'bet',
-        'buyer': buyer,
-        'seller': seller,
-        'item': item,
-        'status' : 'onGoing'
-    }
-    block = Block(server.getLen(), data, time.time(), server.MostRecentBlockHash(), 0)
-    proof = server.proofOfWork(block)
+@app.route('/bet', methods=['POST'])
+def bet(content):
+    auction_data = deepcopy(server.alreadyExist("auction")[1])
+	item_data = {}
+	for data in auction_data['items']:
+		if data['name'] == content['item_name']:
+			item_data = data
+			auction_data['items'].remove(data)
+	if item_data == {}:
+		return 0
+	
+    # user_data['attributes'] = content['attributes']
+	item_data['bidding'].append({"username":content['username'], "bidding_amount" : content['bidding_amount']})
+	auction_data['items'].append(item_data)
+    block = Block(server.getLen(), auction_data, time.time(), server.MostRecentBlockHash(), 0)
     server.add_block(block)
-    # Add a function for sending notification below
-    
-    return
-        
+
 
 if __name__ == "__main__":
 	app.run(host=HOST, port=PORT, debug=True)
+	insertShop()
